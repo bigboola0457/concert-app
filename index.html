@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контроль</title>
+
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        @font-face {
+            font-family: 'HalvarBreit-XBd';
+            src: url('fonts/HalvarBreit-Bd.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'HalvarBreit-Lt';
+            src: url('fonts/HalvarBreit-Lt.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'HalvarBreit-Lt', Arial, sans-serif;
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h2,
+        h3 {
+            font-family: 'HalvarBreit-XBd', Arial, sans-serif;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px; /* Увеличил радиус для скругления */
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+        #search {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .guest {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .guest:hover {
+            background-color: #f8f9fa;
+        }
+        .checked {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .status {
+            margin-top: 25px; /* Увеличил отступ сверху */
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .hidden {
+            display: none;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .debug {
+            background-color: #fff3cd;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Контроль</h2>
+
+    <div class="section" id="uploadSection">
+        <h3 style="margin-bottom: 10px;">Введите название мероприятия</h3>
+        <input type="text" id="eventNameInput" placeholder="Введите название мероприятия" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        <button id="continueActiveEventButton" onclick="continueActiveEvent()" class="secondary" style="margin-bottom: 15px; display: none;">Продолжить активное мероприятие</button>
+        <h3 style="margin-top: 25px;">Загрузить список гостей</h3>
+        <textarea id="guestTextarea" placeholder="Вставьте сюда список гостей из буфера обмена..."></textarea>
+        <div>
+            <button id="loadButton">Загрузить список</button>
+            <button id="clearAllDataButton" onclick="clearAllData()" class="secondary">Очистить всё</button>
+            <button id="showCompletedEventsButton" onclick="showCompletedEvents()" class="secondary">Завершенные мероприятия</button>
+            <button id="showPlannedEventsButton" onclick="showPlannedEvents()" class="secondary">Запланированные мероприятия</button>
+            <button id="toggleDebugButton" onclick="toggleDebug()" class="secondary">Отладка</button>
+            <div id="debugInfo" class="debug" style="margin-top: 15px;"></div>
+        </div>
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="section hidden" id="activeEventSection">
+        <h3>Активное мероприятие</h3>
+        <div id="activeEventName" style="font-weight: bold; margin-bottom: 5px;"></div>
+        <p id="activeEventDate" style="font-size: 0.9em; color: #666; margin-bottom: 10px;"></p>
+        <p id="activeEventTime" style="font-size: 0.9em; color: #666; margin-bottom: 10px;"></p>
+        <p>Всего гостей: <span id="activeEventTotalCount">0</span> | Отмечено: <span id="activeEventCheckedCount">0</span></p>
+        <button onclick="showSearchForActiveEvent()">Начать контроль</button>
+        <button onclick="closeEvent()" class="secondary" style="background-color: #dc3545;">Завершить мероприятие</button>
+    </div>
+
+    <div class="section hidden" id="searchSection">
+        <h3>Поиск гостей</h3>
+        <div id="eventNameDisplay" style="font-weight: bold; margin-bottom: 10px;"></div>
+        <input type="text" id="search" placeholder="Введите фамилию или имя...">
+        <div id="guestList"></div>
+        <div class="status" style="margin-top: 50px;">
+            Всего: <span id="totalCount">0</span> | 
+            Ожидаются: <span id="foundCount">0</span> | 
+            Прошли: <span id="checkedCount">0</span>
+            <button id="scrollToBottomButton" class="secondary hidden" style="float: right; margin-right: 10px;">Прокрутить вниз</button>
+            <button onclick="showReport()" class="secondary" style="float: right;">Отчет</button>
+            <button onclick="closeEvent()" class="secondary" style="float: right; margin-right: 10px; background-color: #dc3545;">Закрыть мероприятие</button>
+        </div>
+    </div>
+
+    <div class="section hidden" id="completedEventsSection">
+        <h3>Завершенные мероприятия</h3>
+        <div id="completedEventsList"></div>
+        <button onclick="backToSearchFromCompleted()" class="secondary">Вернуться на главную</button>
+        <button onclick="clearCompletedEvents()" class="secondary" style="background-color: #dc3545;">Очистить завершенные</button>
+    </div>
+
+    <div class="section hidden" id="plannedEventsSection">
+        <h3>Запланированные мероприятия</h3>
+        <div id="plannedEventsList"></div>
+        <h4>Создать новое запланированное мероприятие</h4>
+        <input type="text" id="newPlannedEventName" placeholder="Название мероприятия" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        <label for="newPlannedEventDate">Дата:</label>
+        <input type="date" id="newPlannedEventDate" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        <label for="newPlannedEventTime">Время:</label>
+        <input type="time" id="newPlannedEventTime" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        <button id="createPlannedEventButton" onclick="createNewPlannedEvent()">Создать мероприятие</button>
+        <button id="savePlannedEventButton" onclick="saveEditedPlannedEvent()" class="hidden">Сохранить изменения</button>
+        <button id="cancelEditPlannedEventButton" onclick="cancelEditPlannedEvent()" class="secondary hidden">Отмена</button>
+        <button onclick="backToUpload()" class="secondary">Вернуться на главную</button>
+    </div>
+
+    <script>
+        // Элементы страницы
+        const uploadSection = document.getElementById('uploadSection');
+        const searchSection = document.getElementById('searchSection');
+        const guestTextarea = document.getElementById('guestTextarea');
+        const searchInput = document.getElementById('search');
+        const guestList = document.getElementById('guestList');
+        const foundCount = document.getElementById('foundCount');
+        const checkedCount = document.getElementById('checkedCount');
+        const totalCount = document.getElementById('totalCount');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const debugInfo = document.getElementById('debugInfo');
+        const eventNameInput = document.getElementById('eventNameInput');
+        const eventNameDisplay = document.getElementById('eventNameDisplay');
+        const completedEventsSection = document.getElementById('completedEventsSection');
+        const completedEventsList = document.getElementById('completedEventsList');
+        const activeEventSection = document.getElementById('activeEventSection');
+        const activeEventName = document.getElementById('activeEventName');
+        const activeEventTotalCount = document.getElementById('activeEventTotalCount');
+        const activeEventCheckedCount = document.getElementById('activeEventCheckedCount');
+        const continueActiveEventButton = document.getElementById('continueActiveEventButton');
+        const activeEventDate = document.getElementById('activeEventDate');
+        const activeEventTime = document.getElementById('activeEventTime');
+        const newPlannedEventNameInput = document.getElementById('newPlannedEventName');
+        const newPlannedEventDateInput = document.getElementById('newPlannedEventDate');
+        const newPlannedEventTimeInput = document.getElementById('newPlannedEventTime');
+        const plannedEventsList = document.getElementById('plannedEventsList');
+        const createPlannedEventButton = document.getElementById('createPlannedEventButton');
+        const savePlannedEventButton = document.getElementById('savePlannedEventButton');
+        const cancelEditPlannedEventButton = document.getElementById('cancelEditPlannedEventButton');
+
+        const clearAllDataButton = document.getElementById('clearAllDataButton');
+        const showCompletedEventsButton = document.getElementById('showCompletedEventsButton');
+        const showPlannedEventsButton = document.getElementById('showPlannedEventsButton');
+        const toggleDebugButton = document.getElementById('toggleDebugButton');
+
+        let editingPlannedEventIndex = -1; // Добавляем глобальную переменную для хранения индекса редактируемого мероприятия
+
+        // Отладка
+        function debugLog(message) {
+            debugInfo.innerHTML += message + '<br>';
+            console.log(message);
+        }
+
+        function toggleDebug() {
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Обновление отображения активного мероприятия
+        function updateActiveEventDisplay() {
+            const currentEventName = localStorage.getItem('eventName') || 'Без названия';
+            const savedGuests = JSON.parse(localStorage.getItem('guestList')) || [];
+            const checkedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+            const eventDate = localStorage.getItem('eventDate') || '';
+            const eventStartTime = localStorage.getItem('eventStartTime') || '';
+
+            activeEventName.textContent = `Мероприятие: ${currentEventName}`;
+            activeEventTotalCount.textContent = savedGuests.length;
+            activeEventCheckedCount.textContent = checkedGuests.length;
+            activeEventDate.textContent = eventDate ? `Дата: ${eventDate}` : '';
+            activeEventTime.textContent = eventStartTime ? `Время начала: ${eventStartTime}` : '';
+
+            debugLog(`Обновлено активное мероприятие: ${currentEventName}, Всего: ${savedGuests.length}, Отмечено: ${checkedGuests.length}`);
+        }
+
+        // Показать секцию поиска для активного мероприятия
+        function showSearchForActiveEvent() {
+            activeEventSection.classList.add('hidden');
+            searchSection.classList.remove('hidden');
+            updateGuestDisplay(); // Обновляем список гостей в поиске
+            updateCounters(); // Обновляем счетчики в поиске
+            debugLog('Перешли в секцию поиска активного мероприятия');
+        }
+
+        // Загрузка списка гостей
+        function loadGuestList() {
+            debugLog('Нажата кнопка "Загрузить список"');
+            
+            const text = guestTextarea.value.trim();
+            debugLog('Текст из textarea: ' + (text ? 'есть (' + text.length + ' символов)' : 'пустой'));
+
+            const eventName = eventNameInput.value.trim();
+            if (!eventName) {
+                uploadStatus.innerHTML = '<div style="color: red; margin-top: 10px;">Пожалуйста, введите название мероприятия</div>';
+                return;
+            }
+
+            if (!text) {
+                uploadStatus.innerHTML = '<div style="color: red; margin-top: 10px;">Вставьте список гостей в текстовое поле</div>';
+                return;
+            }
+
+            const guests = text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            debugLog('Найдено строк: ' + guests.length);
+
+            if (guests.length === 0) {
+                uploadStatus.innerHTML = '<div style="color: red; margin-top: 10px;">Не найдено гостей в списке</div>';
+                return;
+            }
+
+            try {
+                // Сохраняем список в localStorage
+                localStorage.setItem('guestList', JSON.stringify(guests));
+                localStorage.setItem('checkedGuests', JSON.stringify([]));
+                localStorage.setItem('eventName', eventName);
+                localStorage.setItem('eventDate', new Date().toLocaleDateString('ru-RU')); // Сохраняем текущую дату
+                localStorage.setItem('eventStartTime', new Date().toLocaleTimeString('ru-RU')); // Сохраняем текущее время
+                eventNameDisplay.textContent = `Мероприятие: ${eventName}`;
+                debugLog('Данные сохранены в localStorage');
+
+                // Показываем статус загрузки
+                uploadStatus.innerHTML = '<div style="color: green; margin-top: 10px;">Список загружен! Гостей: ' + guests.length + '</div>';
+
+                // Мгновенно переключаемся на режим поиска
+                uploadSection.classList.add('hidden');
+                searchSection.classList.remove('hidden');
+                updateGuestDisplay(); // Обновляем список гостей в поиске
+                updateCounters(); // Обновляем счетчики в поиске
+                debugLog('Переключились в секцию поиска после загрузки');
+
+            } catch (error) {
+                debugLog('Ошибка при сохранении: ' + error);
+                uploadStatus.innerHTML = '<div style="color: red; margin-top: 10px;">❌ Ошибка: ' + error + '</div>';
+            }
+        }
+
+        // Поиск и отображение гостей
+        function updateGuestDisplay() {
+            try {
+                const savedGuests = JSON.parse(localStorage.getItem('guestList')) || [];
+                const checkedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+                const filter = searchInput.value.toLowerCase();
+
+                debugLog('Обновление отображения. Всего гостей: ' + savedGuests.length + ', фильтр: "' + filter + '"');
+
+                const filteredGuests = savedGuests.filter(guest => 
+                    guest.toLowerCase().includes(filter)
+                );
+
+                guestList.innerHTML = '';
+
+                filteredGuests.forEach(guest => {
+                    const guestElement = document.createElement('div');
+                    guestElement.className = 'guest';
+                    const checkedGuest = checkedGuests.find(item => item.name === guest);
+                    if (checkedGuest) {
+                        guestElement.classList.add('checked');
+                        guestElement.textContent = `${guest} (Пришел в ${checkedGuest.checkInTime})`;
+                    } else {
+                        guestElement.textContent = guest;
+                    }
+                    
+                    guestElement.onclick = function() {
+                        toggleGuest(guest);
+                    };
+                    
+                    guestList.appendChild(guestElement);
+                });
+
+                foundCount.textContent = filteredGuests.length;
+                totalCount.textContent = savedGuests.length;
+
+                // Показываем кнопку "Прокрутить вниз", если гостей больше 10
+                if (filteredGuests.length > 10) {
+                    scrollToBottomButton.classList.remove('hidden');
+                } else {
+                    scrollToBottomButton.classList.add('hidden');
+                }
+
+            } catch (error) {
+                debugLog('Ошибка в updateGuestDisplay: ' + error);
+            }
+        }
+
+        // Отметка гостя
+        function toggleGuest(guestName) {
+            try {
+                let checkedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+                
+                const guestIndex = checkedGuests.findIndex(item => item.name === guestName);
+
+                if (guestIndex !== -1) {
+                    checkedGuests.splice(guestIndex, 1);
+                    debugLog('Убрали отметку: ' + guestName);
+                } else {
+                    checkedGuests.push({ name: guestName, checkInTime: new Date().toLocaleTimeString('ru-RU') });
+                    debugLog('Добавили отметку: ' + guestName + ' в ' + new Date().toLocaleTimeString('ru-RU'));
+                }
+                
+                localStorage.setItem('checkedGuests', JSON.stringify(checkedGuests));
+                updateGuestDisplay();
+                updateCounters();
+            } catch (error) {
+                debugLog('Ошибка в toggleGuest: ' + error);
+            }
+        }
+
+        // Обновление счетчиков
+        function updateCounters() {
+            try {
+                const checkedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+                checkedCount.textContent = checkedGuests.length;
+                activeEventCheckedCount.textContent = checkedGuests.length;
+                debugLog('Обновлены счетчики. Отмечено: ' + checkedGuests.length);
+            } catch (error) {
+                debugLog('Ошибка в updateCounters: ' + error);
+            }
+        }
+
+        // Показать отчет
+        function showReport() {
+            try {
+                const checkedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+                const allGuests = JSON.parse(localStorage.getItem('guestList')) || [];
+                
+                if (checkedGuests.length === 0) {
+                    alert('Никто еще не отмечен как пришедший');
+                    return;
+                }
+
+                const report = `ОТЧЕТ\n\n${localStorage.getItem('eventName') ? `Мероприятие: ${localStorage.getItem('eventName')}\n\n` : ''}Пришли (${checkedGuests.length}/${allGuests.length}):\n\n` + 
+                              checkedGuests.map(item => `${item.name} (${item.checkInTime})`).join('\n');
+                
+                alert(report);
+                debugLog('Показан отчет. Пришли: ' + checkedGuests.length);
+            } catch (error) {
+                debugLog('Ошибка в showReport: ' + error);
+            }
+        }
+
+        // Вернуться к загрузке нового списка
+        function backToUpload() {
+            uploadSection.classList.remove('hidden');
+            searchSection.classList.add('hidden');
+            activeEventSection.classList.add('hidden'); // Скрываем активное мероприятие
+            completedEventsSection.classList.add('hidden'); // Скрываем завершенные мероприятия
+            plannedEventsSection.classList.add('hidden'); // Скрываем запланированные мероприятия
+            uploadStatus.innerHTML = '';
+            debugLog('Вернулись к загрузке списка');
+
+            setUploadSectionMode('initial'); // Восстанавливаем исходный режим uploadSection
+        }
+
+        // Очистить все данные
+        function clearAllData() {
+            if (confirm('Очистить все данные? Весь список гостей и отметки будут удалены.')) {
+                localStorage.removeItem('guestList');
+                localStorage.removeItem('checkedGuests');
+                localStorage.removeItem('eventName');
+                guestTextarea.value = '';
+                guestList.innerHTML = '';
+                searchInput.value = '';
+                eventNameInput.value = '';
+                eventNameDisplay.textContent = '';
+                uploadSection.classList.remove('hidden');
+                searchSection.classList.add('hidden');
+                uploadStatus.innerHTML = '';
+                debugLog('Все данные очищены');
+            }
+        }
+
+        // Закрыть мероприятие
+        function closeEvent() {
+            if (confirm('Вы уверены, что хотите закрыть мероприятие? Это действие нельзя отменить.')) {
+                const currentEventName = localStorage.getItem('eventName');
+                const currentGuestList = JSON.parse(localStorage.getItem('guestList')) || [];
+                const currentCheckedGuests = JSON.parse(localStorage.getItem('checkedGuests')) || [];
+                const currentEventStartTime = localStorage.getItem('eventStartTime');
+
+                if (currentEventName || currentGuestList.length > 0) {
+                    const completedEvent = {
+                        name: currentEventName,
+                        guestList: currentGuestList,
+                        checkedGuests: currentCheckedGuests,
+                        timestamp: new Date().toISOString(),
+                        startTime: currentEventStartTime // Добавляем время начала мероприятия
+                    };
+
+                    let completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+                    completedEvents.push(completedEvent);
+                    localStorage.setItem('completedEvents', JSON.stringify(completedEvents));
+                    debugLog('Текущее мероприятие сохранено в завершенные: ' + currentEventName);
+                }
+
+                localStorage.removeItem('guestList');
+                localStorage.removeItem('checkedGuests');
+                localStorage.removeItem('eventName');
+                guestTextarea.value = '';
+                guestList.innerHTML = '';
+                searchInput.value = '';
+                eventNameInput.value = '';
+                eventNameDisplay.textContent = '';
+                backToUpload(); // Вызываем функцию для возврата на страницу загрузки
+                debugLog('Мероприятие закрыто');
+                alert('Мероприятие закрыто. Все данные удалены, но сохранены в завершенных мероприятиях.');
+
+                // После закрытия мероприятия, кнопка "Продолжить активное мероприятие" должна быть скрыта
+                continueActiveEventButton.style.display = 'none';
+            }
+        }
+
+        // Отображение завершенных мероприятий
+        function displayCompletedEvents() {
+            debugLog('Отображение завершенных мероприятий');
+            const completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+            completedEventsList.innerHTML = '';
+
+            if (completedEvents.length === 0) {
+                completedEventsList.innerHTML = '<p>Нет завершенных мероприятий.</p>';
+                return;
+            }
+
+            completedEvents.forEach((event, index) => {
+                const eventElement = document.createElement('div');
+                eventElement.className = 'section';
+                eventElement.innerHTML = `
+                    <h4>${event.name || 'Без названия'} <span style="font-size: 0.8em; color: #666;">(${new Date(event.timestamp).toLocaleDateString()})</span></h4>
+                    <p>Гостей: ${event.guestList.length}, Отмечено: ${event.checkedGuests.length}</p>
+                    <button onclick="viewCompletedEvent(${index})">Посмотреть отчет</button>
+                    <button onclick="exportCompletedEventToExcel(${index})" class="secondary">Экспорт в Excel</button>
+                    <button onclick="sendReportByEmail(${index})" class="secondary">Отправить по Email</button>
+                    <button onclick="deleteCompletedEvent(${index})" class="secondary" style="background-color: #dc3545;">Удалить</button>
+                `;
+                completedEventsList.appendChild(eventElement);
+            });
+        }
+
+        function viewCompletedEvent(index) {
+            const completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+            const event = completedEvents[index];
+            if (event) {
+                const report = `ОТЧЕТ ДЛЯ ЗАВЕРШЕННОГО МЕРОПРИЯТИЯ: ${event.name || 'Без названия'}\n\nПришли (${event.checkedGuests.length}/${event.guestList.length}):\n\n` +
+                              event.checkedGuests.map(item => `${item.name} (${item.checkInTime})`).join('\n');
+                alert(report);
+                debugLog('Показан отчет для завершенного мероприятия: ' + event.name);
+            }
+        }
+
+        function clearCompletedEvents() {
+            if (confirm('Вы уверены, что хотите удалить все завершенные мероприятия? Это действие нельзя отменить.')) {
+                localStorage.removeItem('completedEvents');
+                displayCompletedEvents();
+                debugLog('Все завершенные мероприятия очищены');
+            }
+        }
+
+        function deleteCompletedEvent(index) {
+            if (confirm('Вы уверены, что хотите удалить это мероприятие из списка завершенных? Это действие нельзя отменить.')) {
+                let completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+                if (index > -1 && index < completedEvents.length) {
+                    completedEvents.splice(index, 1);
+                    localStorage.setItem('completedEvents', JSON.stringify(completedEvents));
+                    displayCompletedEvents(); // Обновляем список после удаления
+                    debugLog('Удалено завершенное мероприятие по индексу: ' + index);
+                } else {
+                    debugLog('Попытка удалить несуществующее завершенное мероприятие по индексу: ' + index);
+                }
+            }
+        }
+
+        function exportCompletedEventToExcel(index) {
+            const completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+            const event = completedEvents[index];
+
+            if (event) {
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Добавляем BOM для корректного отображения кириллицы в Excel
+                csvContent += `Мероприятие: ${event.name || 'Без названия'}\n`;
+                csvContent += `Дата: ${new Date(event.timestamp).toLocaleDateString()}\n`;
+                if (event.startTime) {
+                    csvContent += `Время начала: ${event.startTime}\n`;
+                }
+                csvContent += `Всего гостей: ${event.guestList.length}\n`;
+                csvContent += `Отмечено: ${event.checkedGuests.length}\n\n`;
+                csvContent += "Гость,Статус,Время прихода\n";
+
+                event.guestList.forEach(guest => {
+                    const checkedGuest = event.checkedGuests.find(item => item.name === guest);
+                    const status = checkedGuest ? "Пришел" : "Не пришел";
+                    const checkInTime = checkedGuest ? checkedGuest.checkInTime : "";
+                    csvContent += `"${guest}","${status}","${checkInTime}"\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${event.name || 'Мероприятие'}_${new Date(event.timestamp).toLocaleDateString()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                debugLog(`Экспорт в Excel для мероприятия: ${event.name}`);
+            }
+        }
+
+        function sendReportByEmail(index) {
+            const completedEvents = JSON.parse(localStorage.getItem('completedEvents')) || [];
+            const event = completedEvents[index];
+
+            if (event) {
+                const eventName = event.name || 'Без названия';
+                const eventDate = new Date(event.timestamp).toLocaleDateString('ru-RU');
+                const eventStartTime = event.startTime || '';
+                const totalGuests = event.guestList.length;
+                const checkedGuestsCount = event.checkedGuests.length;
+
+                let body = `Отчет по мероприятию: ${eventName}\n`;
+                body += `Дата: ${eventDate}\n`;
+                if (eventStartTime) {
+                    body += `Время начала: ${eventStartTime}\n`;
+                }
+                body += `Всего гостей: ${totalGuests}\n`;
+                body += `Отмечено: ${checkedGuestsCount}\n\n`;
+                body += `Список пришедших (${checkedGuestsCount}/${totalGuests}):\n`;
+
+                event.checkedGuests.forEach(item => {
+                    body += `- ${item.name} (Пришел в ${item.checkInTime})\n`;
+                });
+
+                const subject = `Отчет по мероприятию: ${eventName} от ${eventDate}`;
+                const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+                window.location.href = mailtoLink;
+                debugLog(`Отправка отчета по email для мероприятия: ${eventName}`);
+            }
+        }
+
+        function backToSearchFromCompleted() {
+            completedEventsSection.classList.add('hidden');
+            uploadSection.classList.remove('hidden'); // Теперь возвращаемся на страницу загрузки
+            debugLog('Вернулись на главную из завершенных мероприятий');
+        }
+
+        function showCompletedEvents() {
+            uploadSection.classList.add('hidden');
+            searchSection.classList.add('hidden');
+            activeEventSection.classList.add('hidden'); // Скрываем активное мероприятие
+            completedEventsSection.classList.remove('hidden');
+            displayCompletedEvents();
+            debugLog('Переключились на отображение завершенных мероприятий');
+        }
+
+        function showPlannedEvents() {
+            uploadSection.classList.add('hidden');
+            searchSection.classList.add('hidden');
+            activeEventSection.classList.add('hidden'); // Скрываем активное мероприятие
+            completedEventsSection.classList.add('hidden'); // Скрываем завершенные мероприятия
+            plannedEventsSection.classList.remove('hidden');
+            displayPlannedEvents();
+            debugLog('Переключились на отображение запланированных мероприятий');
+
+            setUploadSectionMode('initial'); // Убедимся, что uploadSection в начальном режиме, если перейдем обратно
+        }
+
+        function displayPlannedEvents() {
+            debugLog('Отображение запланированных мероприятий');
+            const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            plannedEventsList.innerHTML = '';
+
+            if (plannedEvents.length === 0) {
+                plannedEventsList.innerHTML = '<p>Нет запланированных мероприятий.</p>';
+                return;
+            }
+
+            plannedEvents.forEach((event, index) => {
+                const eventElement = document.createElement('div');
+                eventElement.className = 'section';
+                eventElement.innerHTML = `
+                    <h4>${event.name || 'Без названия'} <span style="font-size: 0.8em; color: #666;">(Дата: ${new Date(event.date).toLocaleDateString()}, Время: ${event.time})</span></h4>
+                    <p>Гостей: ${event.guestList.length}</p>
+                    <button onclick="activatePlannedEvent(${index})">Активировать</button>
+                    <button onclick="editPlannedEvent(${index})" class="secondary">Редактировать</button>
+                    <button onclick="deletePlannedEvent(${index})" class="secondary" style="background-color: #dc3545;">Удалить</button>
+                `;
+                plannedEventsList.appendChild(eventElement);
+            });
+        }
+
+        function viewPlannedEvent(index) {
+            const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            const event = plannedEvents[index];
+            if (event) {
+                const report = `ОТЧЕТ ДЛЯ ЗАПЛАНИРОВАННОГО МЕРОПРИЯТИЯ: ${event.name || 'Без названия'}\n\nПришли (${event.checkedGuests.length}/${event.guestList.length}):\n\n` +
+                              event.checkedGuests.map(item => `${item.name} (${item.checkInTime})`).join('\n');
+                alert(report);
+                debugLog('Показан отчет для запланированного мероприятия: ' + event.name);
+            }
+        }
+
+        function deletePlannedEvent(index) {
+            if (confirm('Вы уверены, что хотите удалить это запланированное мероприятие? Это действие нельзя отменить.')) {
+                let plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+                if (index > -1 && index < plannedEvents.length) {
+                    plannedEvents.splice(index, 1);
+                    localStorage.setItem('plannedEvents', JSON.stringify(plannedEvents));
+                    displayPlannedEvents(); // Обновляем список после удаления
+                    debugLog('Удалено запланированное мероприятие по индексу: ' + index);
+                } else {
+                    debugLog('Попытка удалить несуществующее запланированное мероприятие по индексу: ' + index);
+                }
+            }
+        }
+
+        function createNewPlannedEvent() {
+            const name = newPlannedEventNameInput.value.trim();
+            const date = newPlannedEventDateInput.value;
+            const time = newPlannedEventTimeInput.value;
+
+            if (!name) {
+                alert('Пожалуйста, введите название мероприятия.');
+                return;
+            }
+            if (!date) {
+                alert('Пожалуйста, выберите дату мероприятия.');
+                return;
+            }
+            if (!time) {
+                alert('Пожалуйста, выберите время мероприятия.');
+                return;
+            }
+
+            const guests = []; // Пустой список гостей для нового запланированного мероприятия
+            const checkedGuests = []; // Пустой список отмеченных гостей
+
+            const newEvent = {
+                name: name,
+                date: date,
+                time: time,
+                guestList: guests,
+                checkedGuests: checkedGuests,
+                timestamp: new Date().toISOString()
+            };
+
+            let plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            plannedEvents.push(newEvent);
+            localStorage.setItem('plannedEvents', JSON.stringify(plannedEvents));
+            displayPlannedEvents();
+            alert('Новое запланированное мероприятие создано!');
+            debugLog('Создано новое запланированное мероприятие: ' + name);
+        }
+
+        function activatePlannedEvent(index) {
+            const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            const event = plannedEvents[index];
+
+            if (event) {
+                // Сохраняем данные запланированного мероприятия в localStorage
+                localStorage.setItem('eventName', event.name);
+                localStorage.removeItem('guestList'); // Сбрасываем список гостей
+                localStorage.removeItem('checkedGuests'); // Сбрасываем отмеченных гостей
+                localStorage.setItem('eventDate', ''); // Сбрасываем дату
+                localStorage.setItem('eventStartTime', ''); // Сбрасываем время начала
+
+                // Переключаемся на секцию загрузки, чтобы пользователь мог вставить список гостей
+                uploadSection.classList.remove('hidden');
+                activeEventSection.classList.add('hidden');
+                searchSection.classList.add('hidden');
+                completedEventsSection.classList.add('hidden');
+                plannedEventsSection.classList.add('hidden');
+
+                // Заполняем поле названия мероприятия
+                eventNameInput.value = event.name;
+                eventNameInput.readOnly = true; // Делаем поле только для чтения
+                guestTextarea.value = ''; // Очищаем textarea
+                
+                setUploadSectionMode('activate_planned'); // Устанавливаем режим для активации запланированного мероприятия
+
+                debugLog('Активировано запланированное мероприятие: ' + event.name + '. Ожидание загрузки списка.');
+                alert('Мероприятие "' + event.name + '" активировано. Загрузите список гостей.');
+
+                // Удаляем активированное мероприятие из списка запланированных
+                plannedEvents.splice(index, 1);
+                localStorage.setItem('plannedEvents', JSON.stringify(plannedEvents));
+                displayPlannedEvents(); // Обновляем список запланированных мероприятий
+            }
+        }
+
+        function editPlannedEvent(index) {
+            const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            const event = plannedEvents[index];
+            if (event) {
+                newPlannedEventNameInput.value = event.name;
+                newPlannedEventDateInput.value = event.date;
+                newPlannedEventTimeInput.value = event.time;
+                createPlannedEventButton.classList.add('hidden');
+                savePlannedEventButton.classList.remove('hidden');
+                cancelEditPlannedEventButton.classList.remove('hidden');
+                editingPlannedEventIndex = index; // Сохраняем индекс редактируемого мероприятия
+                debugLog('Режим редактирования запланированного мероприятия активирован. Индекс: ' + index);
+            }
+        }
+
+        function saveEditedPlannedEvent() {
+            const name = newPlannedEventNameInput.value.trim();
+            const date = newPlannedEventDateInput.value;
+            const time = newPlannedEventTimeInput.value;
+
+            if (!name) {
+                alert('Пожалуйста, введите название мероприятия.');
+                return;
+            }
+            if (!date) {
+                alert('Пожалуйста, выберите дату мероприятия.');
+                return;
+            }
+            if (!time) {
+                alert('Пожалуйста, выберите время мероприятия.');
+                return;
+            }
+
+            const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+            const index = editingPlannedEventIndex; // Используем сохраненный индекс
+
+            if (index !== -1 && index < plannedEvents.length) {
+                plannedEvents[index] = {
+                    ...plannedEvents[index],
+                    name: name,
+                    date: date,
+                    time: time
+                };
+                localStorage.setItem('plannedEvents', JSON.stringify(plannedEvents));
+                displayPlannedEvents();
+                alert('Изменения сохранены!');
+                debugLog('Изменения запланированного мероприятия сохранены.');
+            } else {
+                debugLog('Ошибка: не удалось найти запланированное мероприятие для сохранения изменений.');
+            }
+            cancelEditPlannedEvent();
+        }
+
+        function cancelEditPlannedEvent() {
+            newPlannedEventNameInput.value = '';
+            newPlannedEventDateInput.value = '';
+            newPlannedEventTimeInput.value = '';
+            createPlannedEventButton.classList.remove('hidden');
+            savePlannedEventButton.classList.add('hidden');
+            cancelEditPlannedEventButton.classList.add('hidden');
+            editingPlannedEventIndex = -1; // Сбрасываем индекс
+            debugLog('Режим редактирования запланированного мероприятия отменен.');
+        }
+
+        // Продолжить активное мероприятие
+        function continueActiveEvent() {
+            uploadSection.classList.add('hidden');
+            activeEventSection.classList.remove('hidden');
+            updateActiveEventDisplay();
+            debugLog('Продолжили активное мероприятие');
+        }
+
+        // Переключает видимость поля добавления нового гостя
+        // function toggleNewGuestInput() {
+        //     newGuestInputSection.classList.toggle('hidden');
+        //     debugLog('Переключена видимость поля добавления нового гостя');
+        // }
+
+        // Добавить нового гостя в список
+        // function addGuest() {
+        //     const newGuestName = newGuestNameInput.value.trim();
+        //     if (newGuestName) {
+        //         let guestList = JSON.parse(localStorage.getItem('guestList')) || [];
+        //         if (!guestList.includes(newGuestName)) {
+        //             guestList.push(newGuestName);
+        //             localStorage.setItem('guestList', JSON.stringify(guestList));
+        //             updateGuestDisplay(); // Обновляем отображение гостей
+        //             updateCounters(); // Обновляем счетчики
+        //             updateActiveEventDisplay(); // Обновляем счетчики активного мероприятия
+        //             debugLog('Добавлен новый гость: ' + newGuestName);
+        //         } else {
+        //             alert('Этот гость уже есть в списке.');
+        //             debugLog('Попытка добавить гостя, который уже существует: ' + newGuestName);
+        //         }
+        //         newGuestNameInput.value = ''; // Очищаем поле ввода
+        //     } else {
+        //         alert('Пожалуйста, введите имя нового гостя.');
+        //         debugLog('Попытка добавить гостя с пустым именем.');
+        //     }
+        // }
+
+        // Прокрутка списка гостей вниз
+        function scrollToBottom() {
+            guestList.scrollTop = guestList.scrollHeight;
+            debugLog('Список гостей прокручен вниз.');
+        }
+
+        // Автозагрузка при открытии страницы
+        function init() {
+            debugLog('Страница загружена');
+            
+            // Назначаем обработчик кнопки
+            document.getElementById('loadButton').addEventListener('click', loadGuestList);
+            debugLog('Обработчик кнопки назначен');
+
+            // Логика автозагрузки, которая переключала на поиск или завершенные мероприятия, будет удалена.
+            // Теперь по умолчанию всегда будет отображаться секция загрузки.
+            uploadSection.classList.remove('hidden');
+            searchSection.classList.add('hidden');
+            completedEventsSection.classList.add('hidden');
+            activeEventSection.classList.add('hidden'); // Скрываем активное мероприятие по умолчанию
+            plannedEventsSection.classList.add('hidden'); // Скрываем запланированные мероприятия по умолчанию
+
+            setUploadSectionMode('initial'); // Устанавливаем начальный режим для uploadSection при загрузке страницы
+
+            // Если есть активное мероприятие, загружаем его данные и показываем секцию активного мероприятия
+            const savedGuests = JSON.parse(localStorage.getItem('guestList'));
+            if (savedGuests && savedGuests.length > 0) {
+                uploadSection.classList.add('hidden');
+                activeEventSection.classList.remove('hidden');
+                updateActiveEventDisplay();
+                debugLog('Автозагрузка: найдено активное мероприятие, отображаем его секцию.');
+                setUploadSectionMode('initial'); // Убедимся, что uploadSection в начальном режиме
+            } else {
+                // Если нет активного мероприятия, проверяем запланированные
+                const plannedEvents = JSON.parse(localStorage.getItem('plannedEvents')) || [];
+                if (plannedEvents.length > 0) {
+                    showPlannedEvents(); // Показываем секцию запланированных мероприятий
+                    debugLog('Автозагрузка: найдены запланированные мероприятия, отображаем их секцию.');
+                } else {
+                    // Если нет ни активных, ни запланированных, остаемся в режиме начальной загрузки
+                    setUploadSectionMode('initial');
+                }
+            }
+
+            // Если есть активное мероприятие, показываем кнопку "Продолжить активное мероприятие"
+            if (localStorage.getItem('guestList')) {
+                continueActiveEventButton.style.display = 'block';
+            } else {
+                continueActiveEventButton.style.display = 'none';
+            }
+
+            // Обработчик поиска
+            searchInput.addEventListener('input', updateGuestDisplay);
+
+            // Обработчик кнопки прокрутки вниз
+            document.getElementById('scrollToBottomButton').addEventListener('click', scrollToBottom);
+        }
+
+        // Функция для управления видимостью элементов в uploadSection
+        function setUploadSectionMode(mode) {
+            if (mode === 'initial') {
+                document.querySelector('#uploadSection h3:first-of-type').textContent = 'Введите название мероприятия'; // Восстанавливаем текст заголовка
+                document.querySelector('#uploadSection h3:first-of-type').style.display = 'block';
+                eventNameInput.style.display = 'block';
+                eventNameInput.readOnly = false; // Снимаем readOnly
+                document.querySelector('#uploadSection h3:last-of-type').textContent = 'Загрузить список гостей'; // Восстанавливаем текст заголовка
+                document.querySelector('#uploadSection h3:last-of-type').style.display = 'block';
+                guestTextarea.style.display = 'block';
+                loadButton.textContent = 'Загрузить список';
+                clearAllDataButton.style.display = 'inline-block';
+                showCompletedEventsButton.style.display = 'inline-block';
+                showPlannedEventsButton.style.display = 'inline-block';
+                toggleDebugButton.style.display = 'inline-block';
+                if (localStorage.getItem('guestList')) {
+                    continueActiveEventButton.style.display = 'block';
+                } else {
+                    continueActiveEventButton.style.display = 'none';
+                }
+            } else if (mode === 'activate_planned') {
+                document.querySelector('#uploadSection h3:first-of-type').style.display = 'none'; // 'Введите название мероприятия' скрываем
+                eventNameInput.style.display = 'block'; // Оставим поле для отображения названия, но сделаем его readonly
+                eventNameInput.readOnly = true;
+                document.querySelector('#uploadSection h3:last-of-type').textContent = 'Загрузите список гостей для мероприятия: ' + eventNameInput.value; // Обновляем текст заголовка
+                document.querySelector('#uploadSection h3:last-of-type').style.display = 'block';
+                guestTextarea.style.display = 'block';
+                loadButton.textContent = 'Начать контроль';
+                clearAllDataButton.style.display = 'none';
+                showCompletedEventsButton.style.display = 'none';
+                showPlannedEventsButton.style.display = 'none';
+                toggleDebugButton.style.display = 'none';
+                continueActiveEventButton.style.display = 'none';
+            }
+        }
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker зарегистрирован:', registration);
+                    })
+                    .catch(error => {
+                        console.log('❌ Ошибка регистрации Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+
+</body>
+</html>
